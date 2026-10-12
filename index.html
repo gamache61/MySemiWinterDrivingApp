@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Winter Driving Trainer</title>
+<meta name="theme-color" content="#0d1b2a">
+<meta name="description" content="Commercial truck winter driving practice">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon1.png">
+<link rel="apple-touch-icon" href="icons/icon1.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Winter Driving">
+<style>
+:root{--bg:#0d1b2a;--panel:rgba(13,27,42,.82);--ice:#9fd3ff;--acc:#4fb3ff;--ok:#4cd17a;--warn:#ffc53d;--bad:#ff5a5a;--txt:#eef5fc}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto;z-index:20;background:radial-gradient(ellipse at top,#1d3b5c 0%,#0d1b2a 70%)}
+.screen.on{display:flex}
+.card{width:100%;max-width:620px;background:var(--panel);border:1px solid rgba(159,211,255,.25);border-radius:18px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.45);margin:auto}
+h1{margin:0 0 4px;font-size:clamp(28px,6vw,40px);letter-spacing:.5px}
+h1 span{color:var(--ice)}
+h2{margin:0 0 12px;font-size:24px}
+.sub{color:#9cb4cc;margin:0 0 22px}
+.btn{display:block;width:100%;padding:16px 18px;margin:10px 0;border:0;border-radius:12px;background:#1e3a5a;color:var(--txt);font-size:18px;font-weight:600;text-align:left;cursor:pointer;transition:background .15s,transform .1s}
+.btn:hover{background:#28507a}.btn:active{transform:scale(.98)}
+.btn small{display:block;font-weight:400;font-size:13px;color:#9cb4cc;margin-top:3px}
+.btn.pri{background:var(--acc);color:#04203a;text-align:center}
+.btn.pri:hover{background:#7cc7ff}
+.row{display:flex;gap:10px}.row .btn{text-align:center}
+.foot{text-align:center;color:#6f8aa5;font-size:12px;margin-top:16px}
+.flakes{position:fixed;inset:0;pointer-events:none;z-index:19}
+ul.keys{list-style:none;padding:0;margin:0 0 14px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px}
+ul.keys b{background:#1e3a5a;padding:2px 8px;border-radius:6px;font-size:13px;white-space:nowrap}
+.note{background:rgba(79,179,255,.12);border-left:3px solid var(--acc);padding:10px 12px;border-radius:6px;font-size:14px;color:#cfe3f5;margin:10px 0}
+/* HUD */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10;display:none}
+#hud.on{display:block}
+#panel{position:absolute;top:10px;left:10px;background:var(--panel);border-radius:12px;padding:10px 14px;min-width:190px;font-size:14px}
+#spd{font-size:38px;font-weight:800;line-height:1}
+#spd small{font-size:14px;font-weight:500;color:#9cb4cc}
+.hl{display:flex;justify-content:space-between;gap:12px;margin-top:4px}
+.hl span:first-child{color:#9cb4cc}
+.bar{height:8px;background:#22384f;border-radius:4px;overflow:hidden;margin-top:3px}
+.bar i{display:block;height:100%;width:0;background:var(--ok);border-radius:4px}
+#right{position:absolute;top:10px;right:10px;background:var(--panel);border-radius:12px;padding:10px 14px;width:200px;font-size:14px;text-align:right}
+#score{font-size:30px;font-weight:800}
+#msg{position:absolute;top:22%;left:50%;transform:translateX(-50%) translateY(-10px);max-width:min(560px,90vw);padding:12px 18px;border-radius:12px;font-weight:700;font-size:17px;text-align:center;opacity:0;transition:opacity .25s,transform .25s;background:rgba(0,0,0,.6)}
+#msg.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#msg.warn{background:rgba(170,110,0,.88)}#msg.bad{background:rgba(180,30,30,.9)}#msg.info{background:rgba(20,90,160,.9)}
+#gearBox{position:absolute;bottom:14px;right:10px;background:rgba(13,27,42,.9);border:2px solid rgba(159,211,255,.35);border-radius:14px;padding:6px 16px 8px;text-align:center;min-width:120px;transition:transform .15s,border-color .15s}
+body.touchon #gearBox{bottom:auto;top:150px}
+#gearBox .gl{font-size:12px;letter-spacing:2px;color:#9cb4cc}
+#gearBox .gn{font-size:46px;font-weight:900;line-height:1}
+#gearBox .gm{font-size:12px;color:#9cb4cc}
+#gearBox.pop{transform:scale(1.15);border-color:var(--acc)}
+#gearDots{display:flex;gap:3px;justify-content:center;margin-top:4px}
+#gearDots i{width:8px;height:8px;border-radius:2px;background:#22384f}
+#gearDots i.on{background:var(--acc)}
+@media (max-width:600px){#gearBox{bottom:auto;top:150px;min-width:90px;padding:4px 10px}#gearBox .gn{font-size:32px}}
+#steerbar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:200px;height:10px;background:var(--panel);border-radius:5px}
+#steerbar i{position:absolute;top:-3px;left:50%;width:6px;height:16px;margin-left:-3px;background:var(--ice);border-radius:3px}
+#touch{position:fixed;inset:auto 0 0 0;height:150px;z-index:11;display:none;pointer-events:none}
+#touch.on{display:block}
+.tb{position:absolute;bottom:18px;width:74px;height:74px;border-radius:50%;background:rgba(13,27,42,.6);border:2px solid rgba(159,211,255,.4);color:#fff;font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center;pointer-events:auto}
+.tb.act{background:rgba(79,179,255,.55)}
+.tb.sm{width:52px;height:52px;font-size:13px;bottom:110px}
+/* quiz */
+.opt{display:block;width:100%;text-align:left;padding:14px 16px;margin:8px 0;border-radius:10px;border:2px solid #2b4a6b;background:#152c45;color:var(--txt);font-size:16px;cursor:pointer}
+.opt:hover{border-color:var(--acc)}
+.opt.right{border-color:var(--ok);background:rgba(76,209,122,.18)}
+.opt.wrong{border-color:var(--bad);background:rgba(255,90,90,.15)}
+.opt:disabled{cursor:default}
+#qexp{margin-top:10px}
+.prog{color:#9cb4cc;font-size:14px;margin-bottom:8px}
+/* checklist */
+.ck{display:flex;gap:12px;align-items:flex-start;padding:12px;margin:6px 0;border-radius:10px;background:#152c45;cursor:pointer;border:2px solid transparent}
+.ck.done{border-color:var(--ok);background:rgba(76,209,122,.12)}
+.ck .bx{flex:0 0 26px;height:26px;border-radius:6px;border:2px solid #4a6a8c;display:flex;align-items:center;justify-content:center;font-weight:800}
+.ck.done .bx{background:var(--ok);border-color:var(--ok);color:#04203a}
+.ck b{display:block}.ck small{color:#9cb4cc}
+.big{font-size:56px;font-weight:900;text-align:center;margin:6px 0}
+.stats{display:grid;grid-template-columns:1fr auto;gap:6px 16px;margin:12px 0;font-size:15px}
+.stats span:nth-child(odd){color:#9cb4cc}
+.tips li{margin:6px 0}
+@media (max-width:600px){#panel{font-size:12px;min-width:150px;padding:8px 10px}#spd{font-size:28px}#right{width:150px;font-size:12px}#score{font-size:22px}#msg{font-size:15px;top:30%}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- MENU -->
+<div id="menu" class="screen on">
+  <div class="card">
+    <h1>Winter <span>Driving</span> Trainer</h1>
+    <p class="sub">Commercial truck winter driving practice</p>
+    <button class="btn" data-go="brief">❄️ Winter Drive Simulator<small>Black ice, snow, curves, traffic — keep it on the road</small></button>
+    <button class="btn" data-go="quiz">📝 Winter Knowledge Quiz<small>Skids, jackknifes, black ice, chain laws</small></button>
+    <button class="btn" data-go="check">✅ Winter Pre-Trip Checklist<small>What to check before you roll out in the cold</small></button>
+    <div class="foot">Gamache Games · For practice only — always follow your training, company policy and local regulations.</div>
+  </div>
+</div>
+
+<!-- BRIEFING -->
+<div id="brief" class="screen">
+  <div class="card">
+    <h2>Winter Drive</h2>
+    <p class="sub">8 km of mixed winter highway in a loaded tractor-trailer. Reach the finish without crashing and keep your safety score high.</p>
+    <ul class="keys">
+      <li><b>↑ / W</b></li><li>Throttle</li>
+      <li><b>↓ / S</b></li><li>Brake (pressure builds the longer you hold)</li>
+      <li><b>← → / A D</b></li><li>Steer</li>
+      <li><b>R / Right Shift</b></li><li>Shift up</li>
+      <li><b>F / Left Shift</b></li><li>Shift down</li>
+      <li><b>E</b></li><li>Engine brake ON / OFF</li>
+      <li><b>C</b></li><li>Chase / cab view</li>
+      <li><b>P / Esc</b></li><li>Pause</li>
+    </ul>
+    <div class="note">Watch the outside temperature. Near 0°C, a road that <i>looks</i> wet may be black ice — especially on bridges.</div>
+    <div class="note">Your engine brake starts ON. On slippery roads it can lock the drive wheels.</div>
+    <div class="note">Each gear has a top speed — hold the throttle and the truck holds steady at that speed. Higher gears give less torque and less wheel spin on ice.</div>
+    <div class="row"><button class="btn" data-go="menu">Back</button><button class="btn pri" id="startDrive">Start Drive</button></div>
+  </div>
+</div>
+
+<!-- PAUSE -->
+<div id="pause" class="screen" style="background:rgba(5,12,20,.7)">
+  <div class="card" style="max-width:380px">
+    <h2>Paused</h2>
+    <button class="btn pri" id="resume">Resume</button>
+    <button class="btn" id="restart">Restart Drive</button>
+    <button class="btn" id="toMenu">Main Menu</button>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen">
+  <div class="card">
+    <h2 id="rTitle">Finished</h2>
+    <p class="sub" id="rSub"></p>
+    <div class="big" id="rGrade">A</div>
+    <div class="stats" id="rStats"></div>
+    <h3 style="margin:14px 0 6px">Coaching</h3>
+    <ul class="tips" id="rTips"></ul>
+    <div class="row"><button class="btn" data-go="menu">Menu</button><button class="btn pri" id="again">Drive Again</button></div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" class="screen">
+  <div class="card">
+    <div class="prog" id="qprog"></div>
+    <h2 id="qq"></h2>
+    <div id="qopts"></div>
+    <div id="qexp"></div>
+    <div class="row" style="margin-top:8px"><button class="btn" data-go="menu">Menu</button><button class="btn pri" id="qnext" style="display:none">Next</button></div>
+  </div>
+</div>
+
+<!-- CHECKLIST -->
+<div id="check" class="screen">
+  <div class="card">
+    <h2>Winter Pre-Trip Checklist</h2>
+    <p class="sub" id="ckprog"></p>
+    <div id="cklist"></div>
+    <div class="row" style="margin-top:8px"><button class="btn" data-go="menu">Menu</button><button class="btn" id="ckreset">Reset</button></div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="panel">
+    <div id="spd">0 <small>km/h</small></div>
+    <div class="hl"><span>Posted</span><span>100</span></div>
+    <div class="hl"><span>Gear</span><span id="hGear">1</span></div>
+    <div class="bar"><i id="hRpm" style="background:var(--acc)"></i></div>
+    <div class="hl"><span>Road</span><span id="hRoad">Dry</span></div>
+    <div class="hl"><span>Outside temp</span><span id="hTemp">4°C</span></div>
+    <div class="hl"><span>Engine brake</span><span id="hJake">ON</span></div>
+    <div class="hl"><span>Following</span><span id="hFol">—</span></div>
+    <div class="hl" style="margin-top:6px"><span>Traction used</span><span id="hTracT"></span></div>
+    <div class="bar"><i id="hTrac"></i></div>
+  </div>
+  <div id="right">
+    <div style="color:#9cb4cc">Safety score</div>
+    <div id="score">100</div>
+    <div style="color:#9cb4cc;margin-top:6px">Route</div>
+    <div class="bar"><i id="hProg" style="background:var(--acc)"></i></div>
+    <div id="hDist" style="margin-top:3px">0.0 / 7.9 km</div>
+  </div>
+  <div id="msg"></div>
+  <div id="gearBox"><div class="gl">GEAR</div><div class="gn" id="gNum">1</div><div class="gm" id="gMax">max 12 km/h</div><div id="gearDots"></div></div>
+  <div id="steerbar"><i id="steerI"></i></div>
+</div>
+<div id="touch">
+  <div class="tb" data-k="left" style="left:16px">◀</div>
+  <div class="tb" data-k="right" style="left:104px">▶</div>
+  <div class="tb" data-k="down" style="right:104px">▼</div>
+  <div class="tb" data-k="up" style="right:16px">▲</div>
+  <div class="tb sm" data-t="jake" style="right:16px">JAKE</div>
+  <div class="tb sm" data-t="cam" style="right:80px">CAM</div>
+  <div class="tb sm" data-t="pause" style="left:16px">II</div>
+  <div class="tb sm" data-t="gup" style="right:144px">G▲</div>
+  <div class="tb sm" data-t="gdn" style="right:208px">G▼</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+
+/* ================= SCREENS ================= */
+let state='menu';
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  if(id) $(id).classList.add('on');
+  const driving = id===null;
+  $('hud').classList.toggle('on', driving || id==='pause');
+  $('touch').classList.toggle('on', (driving) && isTouch);
+  document.body.classList.toggle('touchon', isTouch);
+}
+const isTouch = matchMedia('(pointer:coarse)').matches || ('ontouchstart' in window);
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{
+  const g=b.dataset.go;
+  if(g==='quiz') startQuiz();
+  if(g==='check') renderChecklist();
+  state=g; show(g);
+}));
+
+/* ================= QUIZ ================= */
+const QUIZ=[
+ {q:"The outside temperature is about 0°C and the road ahead looks wet. What should you suspect?",a:["Black ice — the 'wet' surface may be frozen","The road is just wet; carry on at normal speed","The road is salted, so it can't freeze","Nothing — ice only forms below −10°C"],e:"Black ice is a thin, clear layer that looks like a wet road. It is most likely when temperatures hover around freezing."},
+ {q:"Which part of the road usually freezes first?",a:["Bridges and overpasses","Long straight sections","Uphill grades in the sun","Paved shoulders near towns"],e:"Bridges lose heat from above and below, so their decks often freeze before the road surface around them."},
+ {q:"While braking on ice, your trailer starts to swing out. What is the best first action?",a:["Release the brakes so the wheels roll and regain traction","Brake harder to stop quickly","Accelerate hard to pull the trailer straight","Pull the trailer hand valve fully on"],e:"Locked trailer wheels lose side grip. Releasing the brakes lets them roll and the trailer can come back in line."},
+ {q:"Your drive wheels lose traction and the tractor starts to jackknife. What should you do?",a:["Get off the brakes, throttle and engine brake, and counter-steer to straighten","Hold full brakes until stopped","Turn the engine brake to its highest setting","Steer hard away from the skid"],e:"A tractor jackknife comes from the drive axles locking or spinning. Remove the cause (brakes, throttle, engine brake) and steer to straighten."},
+ {q:"How should you use the engine brake on snow or ice?",a:["Turn it off (or follow your manufacturer's guidance) — it can lock the drive wheels","Leave it on maximum to save your service brakes","Use it only when going uphill","It has no effect on traction"],e:"An engine brake slows only the drive wheels. On a slippery surface that can make them lose grip and trigger a jackknife."},
+ {q:"What should you do with your following distance on winter roads?",a:["Increase it a lot — at least double, more on ice","Keep it the same as summer","Reduce it so you can follow the car's tracks","Only increase it at night"],e:"Stopping distances on snow and ice can be many times longer than on dry pavement. Give yourself far more space."},
+ {q:"On a wet road, the spray from other vehicles' tires suddenly stops. What could that mean?",a:["The road may be starting to freeze","The rain has turned the road dry","Traffic has slowed down","Nothing important"],e:"When water on the road freezes, tires stop throwing spray — a warning sign of ice forming."},
+ {q:"Ice is building up on your mirror arms and antenna. What does that tell you?",a:["The road surface may be icy too","Your heater is broken","Only the truck is icing, not the road","You need to wash the truck"],e:"If ice is forming on the truck, it is likely forming on the road as well."},
+ {q:"Should you use cruise control on snowy or icy roads?",a:["No — keep full manual control of the throttle","Yes, it keeps speed steady","Only on downhill grades","Only with an empty trailer"],e:"Cruise control can keep applying power when a drive wheel starts spinning, making a loss of control more likely."},
+ {q:"Which trailer is generally more likely to swing or jackknife on a slippery road?",a:["An empty or lightly loaded trailer","A fully loaded trailer","Load has no effect","A refrigerated trailer only"],e:"With little weight on the trailer axles, the tires have less grip and lock up more easily."},
+ {q:"Before going down a snowy grade, you should:",a:["Slow down and select a lower gear before starting down","Pick up speed at the top so you don't get stuck","Shift to neutral to coast","Rely only on the service brakes"],e:"Get your speed and gear set before the descent. Shifting or heavy braking partway down on a slippery grade is risky."},
+ {q:"In British Columbia, commercial vehicles over 11,794 kg must carry chains on designated highways during which period?",a:["October 1 to March 31 (some routes later)","December 1 to February 28","November 15 to January 15","Only when it is actually snowing"],e:"BC requires carrying chains on designated routes from October 1 to March 31, with some routes extended. Check DriveBC and current regulations."},
+ {q:"With ABS on a slippery road, how should you brake in an emergency?",a:["Apply firm, steady pressure and let the ABS work","Pump the brakes rapidly","Apply the trailer brake only","Release and re-apply every second"],e:"ABS modulates the brakes for you. Pumping fights the system and lengthens your stop."},
+ {q:"Where is black ice most commonly found?",a:["Shaded areas, bridges, tunnels' ends and in the early morning","Only in parking lots","Only on gravel roads","Sunny sections in mid-afternoon"],e:"Shade, bridges and cold early-morning hours keep the surface below freezing even when nearby pavement is fine."},
+ {q:"You hit a whiteout and can barely see. Which is the safest choice?",a:["Slow down, use low beams, and get well off the road at a safe place if needed","Stop in your lane with hazards on","Use high beams to see further","Speed up to get through it quickly"],e:"High beams reflect off snow. Stopping in a travel lane risks being hit — find a safe pull-out well off the road."},
+ {q:"Your front wheels are sliding and the truck won't turn. What should you do?",a:["Ease off the throttle and brakes and let the wheels regain grip","Turn the wheel even further","Brake as hard as possible","Shift to a higher gear"],e:"A front-wheel skid means the steer tires are past their grip. Reducing speed and brake force lets them roll and steer again."}
+];
+let qOrder=[],qi=0,qScore=0;
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function startQuiz(){qOrder=shuffle(QUIZ.map((_,i)=>i)).slice(0,12);qi=0;qScore=0;renderQ();}
+function renderQ(){
+  if(qi>=qOrder.length){
+    const pct=Math.round(qScore/qOrder.length*100);
+    $('qprog').textContent='Quiz complete';
+    $('qq').textContent=`You scored ${qScore} / ${qOrder.length} (${pct}%)`;
+    $('qopts').innerHTML=`<div class="big">${pct>=90?'🏆':pct>=70?'👍':'📘'}</div>`;
+    $('qexp').innerHTML=`<div class="note">${pct>=80?'Strong winter knowledge. Try the simulator to put it to work.':'Review the explanations and try again — winter mistakes are costly.'}</div>`;
+    const n=$('qnext');n.textContent='Retry';n.style.display='block';n.onclick=startQuiz;return;
+  }
+  const Q=QUIZ[qOrder[qi]];
+  $('qprog').textContent=`Question ${qi+1} of ${qOrder.length} · Score ${qScore}`;
+  $('qq').textContent=Q.q;
+  $('qexp').innerHTML='';$('qnext').style.display='none';
+  const box=$('qopts');box.innerHTML='';
+  shuffle(Q.a.map((t,i)=>({t,ok:i===0}))).forEach(o=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=o.t;b.dataset.ok=o.ok?'1':'';
+    b.onclick=()=>{
+      box.querySelectorAll('.opt').forEach(x=>{x.disabled=true;if(x.dataset.ok)x.classList.add('right');});
+      if(o.ok)qScore++;else b.classList.add('wrong');
+      $('qexp').innerHTML=`<div class="note"><b>${o.ok?'Correct.':'Not quite.'}</b> ${Q.e}</div>`;
+      const n=$('qnext');n.textContent=qi+1>=qOrder.length?'See Results':'Next';n.style.display='block';n.onclick=()=>{qi++;renderQ();};
+    };
+    box.appendChild(b);
+  });
+}
+
+/* ================= CHECKLIST ================= */
+const CHECK=[
+ ["Tire chains on board","Correct size and count, no broken links or hooks, plus tensioners and gloves."],
+ ["Tires winter-ready","Good tread depth and winter-rated (mountain/snowflake or M+S) where required."],
+ ["Drain the air tanks","Moisture in the air system can freeze in lines and valves. Check the air dryer works."],
+ ["Brakes not frozen","Brakes can freeze to the drums overnight. Make sure the wheels roll freely before you go."],
+ ["Clear all snow and ice","Lights, reflectors, mirrors, windows, licence plate — and the trailer roof (falling ice is dangerous)."],
+ ["Wipers and washer fluid","Blades in good shape and fluid rated for deep cold."],
+ ["Defroster and heater","Windshield must stay clear. Check all heater fans and vents."],
+ ["Fuel treated for cold","Winter-blend or anti-gel fuel; keep the tanks well filled."],
+ ["Exhaust system sound","No leaks — carbon monoxide is a real risk while idling in the cold."],
+ ["Emergency kit packed","Warm clothes, boots, gloves, blanket, food, water, flashlight, shovel, sand or traction aid."],
+ ["Check road reports","DriveBC road conditions, closures and the weather forecast for your whole route."],
+ ["Engine brake plan","Know when you'll turn it off — slippery roads can make it lock the drive wheels."]
+];
+let ckDone=new Set();
+function renderChecklist(){
+  const L=$('cklist');L.innerHTML='';
+  CHECK.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='ck'+(ckDone.has(i)?' done':'');
+    d.innerHTML=`<div class="bx">${ckDone.has(i)?'✓':''}</div><div><b>${c[0]}</b><small>${c[1]}</small></div>`;
+    d.onclick=()=>{ckDone.has(i)?ckDone.delete(i):ckDone.add(i);renderChecklist();};
+    L.appendChild(d);
+  });
+  $('ckprog').textContent=ckDone.size===CHECK.length?'✅ All checked — ready to roll. Drive to the conditions.':`${ckDone.size} of ${CHECK.length} checked`;
+}
+$('ckreset').onclick=()=>{ckDone.clear();renderChecklist();};
+
+/* ================= SIM CONSTANTS ================= */
+const HW=7.4, DS=4, LEN=8000, N=LEN/DS+1, FINISH=7850, TL=12.5;
+const GRIP={dry:.8,wet:.55,snow:.28,ice:.12};
+const SAFE={dry:100,wet:85,snow:60,ice:40};
+const FOLLOW={dry:4,wet:6,snow:8,ice:10};
+const GEARS=[12,20,28,36,45,55,65,75,88,100];
+const TQ=[1.6,1.45,1.3,1.15,1.0,.9,.8,.7,.62,.55];
+const LOOK={dry:'Dry',wet:'Wet',snow:'Snow-covered',ice:'Wet'};
+const CARSPD={dry:[88,97],wet:[78,86],snow:[50,56],ice:[36,42]};
+const ROADCOL={dry:0x45484d,wet:0x2a2f35,ice:0x2b3037,snow:0xdce2e8};
+const FOGFAR={dry:900,wet:550,snow:170,ice:380};
+const SNOWAMT={dry:0,wet:.15,snow:1,ice:.35};
+const ZONES=[
+ {s0:0,s1:900,type:'dry',t:4},
+ {s0:900,s1:1800,type:'wet',t:1},
+ {s0:1800,s1:2050,type:'ice',t:0,bridge:1},
+ {s0:2050,s1:3200,type:'wet',t:1},
+ {s0:3200,s1:5000,type:'snow',t:-5},
+ {s0:5000,s1:5260,type:'ice',t:-3},
+ {s0:5260,s1:6200,type:'snow',t:-4},
+ {s0:6200,s1:6450,type:'ice',t:0,bridge:1},
+ {s0:6450,s1:7400,type:'wet',t:1},
+ {s0:7400,s1:8000,type:'dry',t:3}
+];
+function zoneIdx(s){for(let i=0;i<ZONES.length;i++)if(s<ZONES[i].s1)return i;return ZONES.length-1;}
+
+/* ================= PATH ================= */
+const PX=new Float32Array(N),PZ=new Float32Array(N),TH=new Float32Array(N),KK=new Float32Array(N);
+function genPath(){
+  const raw=new Float32Array(N);let i=0,straight=true;
+  while(i<N){
+    const len=straight?200+Math.random()*400:200+Math.random()*320;
+    const n=Math.round(len/DS);
+    const kk=straight?0:(Math.random()<.5?-1:1)/(380+Math.random()*500);
+    for(let j=0;j<n&&i<N;j++,i++)raw[i]=i<90?0:kk;
+    straight=!straight;
+  }
+  const W=20;
+  for(i=0;i<N;i++){let s=0,c=0;for(let j=-W;j<=W;j++){const q=i+j;if(q>=0&&q<N){s+=raw[q];c++;}}KK[i]=s/c;}
+  PX[0]=0;PZ[0]=0;TH[0]=0;
+  for(i=1;i<N;i++){const th=TH[i-1];PX[i]=PX[i-1]-Math.sin(th)*DS;PZ[i]=PZ[i-1]-Math.cos(th)*DS;TH[i]=th+KK[i-1]*DS;}
+}
+function samp(s){
+  s=Math.max(0,Math.min(LEN-0.01,s));
+  const f=s/DS,i=Math.floor(f),t=f-i,j=Math.min(N-1,i+1);
+  return {x:PX[i]+(PX[j]-PX[i])*t,z:PZ[i]+(PZ[j]-PZ[i])*t,th:TH[i]+(TH[j]-TH[i])*t,k:KK[i]};
+}
+function wAt(s,off){const p=samp(s);return {x:p.x+Math.cos(p.th)*off,z:p.z-Math.sin(p.th)*off,th:p.th,k:p.k};}
+
+/* ================= THREE SETUP ================= */
+const RIG={ws:[],wheels:[]};let renderer,scene,camera,fog,cab,trailer,interior,wheelM,snowPts,snowGeo,snowMat,built=false;
+const cars=[];
+function initThree(){
+  renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:true});
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  renderer.setSize(innerWidth,innerHeight);
+  scene=new THREE.Scene();
+  const fc=new THREE.Color(0xc3ccd6);
+  scene.background=fc;fog=new THREE.Fog(fc,30,900);scene.fog=fog;
+  camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,0.1,2000);
+  scene.add(new THREE.HemisphereLight(0xdfe8f2,0x7f8fa0,0.95));
+  const dl=new THREE.DirectionalLight(0xffffff,0.55);dl.position.set(200,400,100);scene.add(dl);
+  addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();});
+}
+function lam(c,o){return new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));}
+function ribbon(offs,colorAt,i0,i1){
+  i0=i0||0;i1=(i1===undefined)?N-1:i1;
+  const cols=offs.length,rows=i1-i0+1;
+  const pos=new Float32Array(rows*cols*3),col=new Float32Array(rows*cols*3),idx=[];
+  const c=new THREE.Color();
+  for(let r=0;r<rows;r++){
+    const i=i0+r,th=TH[i],cs=Math.cos(th),sn=Math.sin(th);
+    c.setHex(colorAt(i*DS));
+    for(let k=0;k<cols;k++){
+      const o=(r*cols+k)*3,ox=offs[k][0];
+      pos[o]=PX[i]+cs*ox;pos[o+1]=offs[k][1];pos[o+2]=PZ[i]-sn*ox;
+      col[o]=c.r;col[o+1]=c.g;col[o+2]=c.b;
+    }
+  }
+  for(let r=0;r<rows-1;r++)for(let k=0;k<cols-1;k++){const a=r*cols+k,b=a+1,cc=a+cols,d=cc+1;idx.push(a,b,cc,b,d,cc);}
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  g.setIndex(idx);g.computeVertexNormals();
+  const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  scene.add(m);return m;
+}
+function ranges(skipBridge){
+  const out=[];let start=null;
+  for(let i=0;i<N;i++){
+    const z=ZONES[zoneIdx(i*DS)],bad=skipBridge&&z.bridge;
+    if(!bad&&start===null)start=i;
+    if((bad||i===N-1)&&start!==null){out.push([start,bad?i-1:i]);start=null;}
+  }
+  return out.filter(r=>r[1]>r[0]);
+}
+function makeSign(lines,s,side,bg){
+  const cv=document.createElement('canvas');cv.width=512;cv.height=256;
+  const x=cv.getContext('2d');
+  x.fillStyle=bg||'#f2c200';x.fillRect(0,0,512,256);
+  x.lineWidth=14;x.strokeStyle='#111';x.strokeRect(10,10,492,236);
+  x.fillStyle='#111';x.textAlign='center';x.textBaseline='middle';
+  const fs=lines.length>2?52:64;x.font=`900 ${fs}px Arial`;
+  lines.forEach((l,i)=>x.fillText(l,256,128+(i-(lines.length-1)/2)*fs*1.12));
+  const tex=new THREE.CanvasTexture(cv);
+  const g=new THREE.Group();
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(5,2.5),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));
+  pl.position.y=3.6;g.add(pl);
+  const post=lam(0x777777);
+  [-1.8,1.8].forEach(px=>{const p=new THREE.Mesh(new THREE.BoxGeometry(.15,3,.15),post);p.position.set(px,1.5,0);g.add(p);});
+  const w=wAt(s,side*(HW+3.2));g.position.set(w.x,0,w.z);g.rotation.y=w.th;scene.add(g);
+}
+function buildWorld(){
+  genPath();
+  // ground
+  let minX=1e9,maxX=-1e9,minZ=1e9,maxZ=-1e9;
+  for(let i=0;i<N;i++){minX=Math.min(minX,PX[i]);maxX=Math.max(maxX,PX[i]);minZ=Math.min(minZ,PZ[i]);maxZ=Math.max(maxZ,PZ[i]);}
+  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(maxX-minX+3000,maxZ-minZ+3000),lam(0xe9eef3));
+  gnd.rotation.x=-Math.PI/2;gnd.position.set((minX+maxX)/2,-0.06,(minZ+maxZ)/2);scene.add(gnd);
+  // road
+  ribbon([[-HW,0.02],[HW,0.02]],s=>{const z=ZONES[zoneIdx(s)];return z.bridge?0x3c4148:ROADCOL[z.type];});
+  // shoulders + snowbanks (not on bridges)
+  ranges(true).forEach(r=>{
+    ribbon([[-HW-2,0.01],[-HW,0.01]],s=>ZONES[zoneIdx(s)].type==='snow'?0xe2e7ec:0xb9c1c9,r[0],r[1]);
+    ribbon([[HW,0.01],[HW+2,0.01]],s=>ZONES[zoneIdx(s)].type==='snow'?0xe2e7ec:0xb9c1c9,r[0],r[1]);
+    ribbon([[-HW-5,0],[-HW-3.4,0.8],[-HW-2,0]],()=>0xf4f7fa,r[0],r[1]);
+    ribbon([[HW+2,0],[HW+3.4,0.8],[HW+5,0]],()=>0xf4f7fa,r[0],r[1]);
+  });
+  // bridges: frozen river + rails
+  const railGeo=new THREE.BoxGeometry(.3,1.1,4.1),railMat=lam(0x8a9097);
+  let railCount=0;ZONES.forEach(z=>{if(z.bridge)railCount+=Math.ceil((z.s1-z.s0)/4)*2;});
+  const rails=new THREE.InstancedMesh(railGeo,railMat,railCount);
+  const dm=new THREE.Object3D();let ri=0;
+  ZONES.forEach(z=>{
+    if(!z.bridge)return;
+    ribbon([[-90,-0.04],[90,-0.04]],()=>0x8ea4b8,Math.round(z.s0/DS)+4,Math.round(z.s1/DS)-4);
+    for(let s=z.s0;s<z.s1;s+=4)for(const sd of[-1,1]){const w=wAt(s,sd*(HW+1.3));dm.position.set(w.x,.55,w.z);dm.rotation.set(0,w.th,0);dm.updateMatrix();rails.setMatrixAt(ri++,dm.matrix);}
+  });
+  scene.add(rails);
+  // markings (hidden under snow)
+  const white=new THREE.MeshBasicMaterial({color:0xf3f3f3});
+  const dashes=[],edges=[];
+  for(let s=0;s<LEN;s+=12)if(ZONES[zoneIdx(s)].type!=='snow')dashes.push(s);
+  for(let s=0;s<LEN;s+=4)if(ZONES[zoneIdx(s)].type!=='snow')edges.push(s);
+  const dI=new THREE.InstancedMesh(new THREE.BoxGeometry(.15,.02,3),white,dashes.length);
+  let di=0;dashes.forEach(s=>{for(const o of[0]){const w=wAt(s,o);dm.position.set(w.x,.035,w.z);dm.rotation.set(0,w.th,0);dm.updateMatrix();dI.setMatrixAt(di++,dm.matrix);}});
+  scene.add(dI);
+  const eI=new THREE.InstancedMesh(new THREE.BoxGeometry(.14,.02,4.05),white,edges.length*2);
+  let ei=0;edges.forEach(s=>{for(const sd of[-1,1]){const w=wAt(s,sd*(HW-.15));dm.position.set(w.x,.035,w.z);dm.rotation.set(0,w.th,0);dm.updateMatrix();eI.setMatrixAt(ei++,dm.matrix);}});
+  scene.add(eI);
+  // trees
+  const spots=[];
+  for(let s=-200;s<LEN+300;s+=14){
+    const z=ZONES[zoneIdx(Math.max(0,s))];
+    const nearBridge=ZONES.some(q=>q.bridge&&s>q.s0-40&&s<q.s1+40);
+    if(nearBridge)continue;
+    for(const sd of[-1,1])if(Math.random()<.85)spots.push([Math.max(0,Math.min(LEN-1,s)),sd*(HW+9+Math.random()*55),.7+Math.random()*.8]);
+  }
+  const tg=new THREE.ConeGeometry(2.4,8,7),cg=new THREE.ConeGeometry(1.5,3.6,7),trg=new THREE.CylinderGeometry(.3,.3,1.6,5);
+  const tI=new THREE.InstancedMesh(tg,lam(0x1d3a2a),spots.length),cI=new THREE.InstancedMesh(cg,lam(0xf2f6f9),spots.length),trI=new THREE.InstancedMesh(trg,lam(0x4a3527),spots.length);
+  spots.forEach((p,i)=>{
+    const w=wAt(p[0],p[1]),sc=p[2];
+    dm.rotation.set(0,Math.random()*6,0);dm.scale.set(sc,sc,sc);
+    dm.position.set(w.x,(1.6+4)*sc,w.z);dm.updateMatrix();tI.setMatrixAt(i,dm.matrix);
+    dm.position.set(w.x,(1.6+6.6)*sc,w.z);dm.updateMatrix();cI.setMatrixAt(i,dm.matrix);
+    dm.position.set(w.x,.8*sc,w.z);dm.updateMatrix();trI.setMatrixAt(i,dm.matrix);
+  });
+  scene.add(tI,cI,trI);
+  // signs
+  makeSign(['WINTER TIRES','OR CHAINS','REQUIRED'],60,1,'#ffffff');
+  ZONES.forEach(z=>{if(z.bridge)makeSign(['BRIDGE','ICES FIRST'],z.s0-260,1);});
+  makeSign(['WINTER','CONDITIONS','AHEAD'],3200-280,1);
+  makeSign(['SLOW','DOWN'],5000-200,1,'#ff9a2e');
+  makeSign(['FINISH'],FINISH,1,'#4cd17a');makeSign(['FINISH'],FINISH,-1,'#4cd17a');
+  // truck
+  buildTruck();
+  for(let i=0;i<4;i++)cars.push({mesh:buildCar(),on:false,s:0,x:0,v:0});
+  // snow
+  const SN=2200;snowGeo=new THREE.BufferGeometry();
+  const sp=new Float32Array(SN*3);for(let i=0;i<SN*3;i++)sp[i]=(Math.random()*2-1)*40;
+  snowGeo.setAttribute('position',new THREE.BufferAttribute(sp,3));
+  snowMat=new THREE.PointsMaterial({color:0xffffff,size:3,sizeAttenuation:false,transparent:true,opacity:0,depthWrite:false});
+  snowPts=new THREE.Points(snowGeo,snowMat);snowPts.frustumCulled=false;scene.add(snowPts);
+  built=true;
+}
+function box(g,w,h,d,x,y,z,m){const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);me.position.set(x,y,z);g.add(me);return me;}
+function wheel(g,x,y,z,m){const w=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,.45,14),m);w.rotation.z=Math.PI/2;w.position.set(x,y,z);g.add(w);}
+function buildTruck(){
+  const FT=0.3048;
+  cab=new THREE.Group();trailer=new THREE.Group();
+  const scene_=scene;
+const M={
+  paint:new THREE.MeshStandardMaterial({color:0xb3121b,metalness:0.45,roughness:0.32}),
+  chrome:new THREE.MeshStandardMaterial({color:0xdde3e8,metalness:1,roughness:0.15}),
+  alum:new THREE.MeshStandardMaterial({color:0xc4c9cd,metalness:0.8,roughness:0.35}),
+  black:new THREE.MeshStandardMaterial({color:0x151617,roughness:0.6,metalness:0.2}),
+  rubber:new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.95}),
+  frame:new THREE.MeshStandardMaterial({color:0x222426,roughness:0.7,metalness:0.4}),
+  glass:new THREE.MeshStandardMaterial({color:0x1e2a33,metalness:0.6,roughness:0.08}),
+  trailer:new THREE.MeshStandardMaterial({color:0xf3f4f2,roughness:0.5,metalness:0.15}),
+  amber:new THREE.MeshStandardMaterial({color:0xffa31a,emissive:0x000000,roughness:0.4}),
+  red:new THREE.MeshStandardMaterial({color:0xc81414,emissive:0x000000,roughness:0.4}),
+  head:new THREE.MeshStandardMaterial({color:0xf4f6ff,emissive:0x000000,roughness:0.2,metalness:0.3}),
+  tapeR:new THREE.MeshStandardMaterial({color:0xd8211d,roughness:0.3,emissive:0x3a0000}),
+  tapeW:new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.3,emissive:0x222222}),
+};
+const amberLamps=[],redLamps=[],headLamps=[];
+
+function box(w,h,d,mat,x,y,z,parent){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);
+  m.castShadow=true;m.receiveShadow=true;(parent||scene_).add(m);return m;
+}
+function cyl(r,len,mat,x,y,z,axis,parent,seg){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,seg||24),mat);
+  if(axis==='x')m.rotation.z=Math.PI/2;if(axis==='z')m.rotation.x=Math.PI/2;
+  m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;(parent||scene_).add(m);return m;
+}
+  M.trailer.color.setHex(0xd9dcdf);M.chrome.metalness=.7;M.chrome.roughness=.22;M.alum.metalness=.55;
+  const pm=new THREE.PMREMGenerator(renderer),es=new THREE.Scene();
+  const sg=new THREE.SphereGeometry(50,24,12),sc=[],sp=sg.attributes.position,cc=new THREE.Color(),top=new THREE.Color(0x7f93a8);
+  for(let i=0;i<sp.count;i++){const y=sp.getY(i)/50;cc.setHex(y>0?0xb9c6d4:0xf2f5f8);if(y>0)cc.lerp(top,y);sc.push(cc.r,cc.g,cc.b);}
+  sg.setAttribute('color',new THREE.Float32BufferAttribute(sc,3));
+  es.add(new THREE.Mesh(sg,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide})));
+  scene.environment=pm.fromScene(es,0.04).texture;
+  const rig=new THREE.Group();
+  const wheels=[];
+// Wheel: tire + rim + hub, axis along z
+function wheel(x,z,dual,steer){
+  const g=new THREE.Group();g.position.set(x,0.51,z);rig.add(g);
+  const spin=new THREE.Group();g.add(spin);
+  const side=Math.sign(z);
+  const offs=dual?[side*-0.0,side*-0.30]:[0];
+  offs.forEach((o,i)=>{
+    const tire=new THREE.Mesh(new THREE.TorusGeometry(0.39,0.13,14,36),M.rubber);
+    tire.scale.z=1.05;tire.position.z=o;tire.castShadow=true;spin.add(tire);
+    const tread=new THREE.Mesh(new THREE.CylinderGeometry(0.505,0.505,0.27,36,1,true),M.rubber);
+    tread.rotation.x=Math.PI/2;tread.position.z=o;tread.castShadow=true;spin.add(tread);
+    const rim=new THREE.Mesh(new THREE.CylinderGeometry(0.29,0.29,0.24,28),i===0?M.alum:M.frame);
+    rim.rotation.x=Math.PI/2;rim.position.z=o;spin.add(rim);
+    if(i===0){
+      const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.13,0.14,16),M.chrome);
+      hub.rotation.x=Math.PI/2;hub.position.z=o+side*0.14;spin.add(hub);
+      for(let k=0;k<10;k++){const a=k/10*Math.PI*2;
+        const n=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.05,6),M.chrome);
+        n.rotation.x=Math.PI/2;n.position.set(Math.cos(a)*0.2,Math.sin(a)*0.2,o+side*0.13);spin.add(n);}
+    }
+  });
+  wheels.push({g,spin,steer:steer?g:null});return g;
+}
+
+/* ================= TRAILER (53 ft dry van) ================= */
+const TL=53*FT, TW=102*0.0254, TOP=13.5*FT, FLOOR=1.26;
+const TH=TOP-FLOOR;
+const trailer_=new THREE.Group();
+// Body
+box(TL,TH,TW,M.trailer_,TL/2,FLOOR+TH/2,0,trailer_);
+// Side posts (logistic posts / rivet lines)
+const postMat=new THREE.MeshStandardMaterial({color:0xd7dadb,roughness:0.45,metalness:0.4});
+for(let x=0.6;x<TL-0.3;x+=0.61){
+  [1,-1].forEach(s=>box(0.06,TH-0.12,0.012,postMat,x,FLOOR+TH/2,s*(TW/2+0.006),trailer_));
+}
+// Top and bottom rails
+[1,-1].forEach(s=>{
+  box(TL,0.09,0.03,M.alum,TL/2,TOP-0.045,s*(TW/2+0.01),trailer_);
+  box(TL,0.26,0.035,M.alum,TL/2,FLOOR+0.13,s*(TW/2+0.012),trailer_);
+});
+box(TL,0.04,TW+0.02,M.alum,TL/2,TOP+0.02,0,trailer_);
+// DOT conspicuity tape (red/white alternating) along lower rail
+for(let x=0.3,i=0;x<TL-0.4;x+=0.46,i++){
+  [1,-1].forEach(s=>box(0.3,0.05,0.005,i%2?M.tapeW:M.tapeR,x,FLOOR+0.13,s*(TW/2+0.031),trailer_));
+}
+// Rear frame, doors
+box(0.06,TH+0.04,TW+0.06,M.alum,-0.03,FLOOR+TH/2,0,trailer_);
+const doorMat=new THREE.MeshStandardMaterial({color:0xe9ebea,roughness:0.5,metalness:0.2});
+[1,-1].forEach(s=>{
+  box(0.03,TH-0.24,TW/2-0.08,doorMat,-0.07,FLOOR+TH/2,s*(TW/4),trailer_);
+  // hinges
+  for(let i=0;i<4;i++)box(0.05,0.08,0.18,M.alum,-0.1,FLOOR+0.35+i*(TH-0.6)/3,s*(TW/2-0.08),trailer_);
+  // lock rods
+  [0.28,0.95].forEach(o=>cyl(0.02,TH-0.1,M.chrome,-0.11,FLOOR+TH/2,s*o*TW/2*0.9,null,trailer_,8));
+});
+box(0.03,TH-0.2,0.02,M.black,-0.09,FLOOR+TH/2,0,trailer_);
+// Rear tape on doors
+for(let i=0;i<8;i++){const s=i<4?1:-1;const z=s*(0.15+ (i%4)*0.26);
+  box(0.005,0.05,0.22,i%2?M.tapeW:M.tapeR,-0.09,FLOOR+0.32,z,trailer_);}
+// Rear ICC bumper
+box(0.12,0.12,TW-0.2,M.frame,-0.05,0.55,0,trailer_);
+[0.6,-0.6].forEach(z=>box(0.1,0.7,0.1,M.frame,0.1,0.9,z,trailer_));
+// Rear lamps
+[1,-1].forEach(s=>{
+  [0.12,0.3].forEach(o=>{const l=cyl(0.07,0.04,M.red,-0.14,FLOOR+0.2,s*(TW/2-o),'x',trailer_,16);redLamps.push(l);});
+  const top=box(0.03,0.05,0.09,M.red,-0.08,TOP-0.08,s*(TW/2-0.2),trailer_);redLamps.push(top);
+});
+for(let i=-1;i<=1;i++){const l=box(0.03,0.05,0.09,M.red,-0.08,TOP-0.08,i*0.15,trailer_);redLamps.push(l);}
+// Side marker lamps
+[1,-1].forEach(s=>{
+  [[TL-0.1,M.amber],[TL/2,M.amber],[0.2,M.red]].forEach(([x,m])=>{
+    const l=box(0.09,0.05,0.03,m,x,FLOOR+0.13,s*(TW/2+0.045),trailer_);(m===M.red?redLamps:amberLamps).push(l);
+    const t=box(0.09,0.05,0.03,m,x,TOP-0.08,s*(TW/2+0.025),trailer_);(m===M.red?redLamps:amberLamps).push(t);
+  });
+});
+// Front nose: upper amber clearance lamps
+[1,-1].forEach(s=>{const l=box(0.03,0.05,0.09,M.amber,TL+0.02,TOP-0.08,s*(TW/2-0.15),trailer_);amberLamps.push(l);});
+// Undercarriage: crossmembers + main rails
+for(let x=0.4;x<TL;x+=0.4)box(0.08,0.1,TW-0.1,M.frame,x,FLOOR-0.05,0,trailer_);
+// Sliding tandem subframe
+const axA=2.0, axB=3.25;
+[0.48,-0.48].forEach(z=>box(4.2,0.25,0.12,M.frame,2.65,FLOOR-0.22,z,trailer_));
+[axA,axB].forEach(x=>{
+  cyl(0.065,TW-0.25,M.frame,x,0.51,0,'z',trailer_,12);
+  [1,-1].forEach(s=>{
+    box(0.7,0.08,0.1,M.frame,x,0.75,s*0.48,trailer_);
+    cyl(0.14,0.28,M.black,x+0.45,0.92,s*0.48,null,trailer_,16); // air bag
+    box(0.15,0.36,0.1,M.frame,x-0.3,0.95,s*0.48,trailer_);       // hanger
+  });
+});
+// Mud flaps behind trailer_ axles
+[1,-1].forEach(s=>box(0.02,0.65,0.62,M.rubber,axA-0.75,0.55,s*(TW/2-0.36),trailer_));
+// Landing gear
+const LGX=TL-3.6, gearParts=[];
+[1,-1].forEach(s=>{
+  box(0.15,0.9,0.15,M.frame,LGX,FLOOR-0.5,s*0.85,trailer_);
+  gearParts.push(box(0.12,0.65,0.12,M.alum,LGX,0.45,s*0.85,trailer_));
+  gearParts.push(box(0.35,0.04,0.3,M.frame,LGX,0.15,s*0.85,trailer_));
+});
+cyl(0.03,1.7,M.frame,LGX,0.75,0,'z',trailer_,8);
+box(0.04,0.04,0.4,M.frame,LGX,0.9,1.15,trailer_); // crank
+// Kingpin plate
+box(1.6,0.04,1.6,M.frame,TL-0.9,FLOOR-0.02,0,trailer_);
+// Trailer wheels
+[axA,axB].forEach(x=>{[1,-1].forEach(s=>wheel(x,s*(TW/2-0.2),true));});
+
+/* ================= TRACTOR ================= */
+const tractor=new THREE.Group();
+const KP=TL-0.9;               // kingpin x
+const FWB=0.6;                 // fifth wheel slid back this far (m) from its old spot
+const D1=KP-0.6, D2=KP+0.72;   // drive axles
+const STEER=KP+6.6;
+const SL0=KP+1.95, SL1=SL0+1.9; // sleeper
+const CB1=SL1+1.85;             // cab front / hood start
+const HD1=CB1+2.25;             // hood front
+// Frame rails
+[0.43,-0.43].forEach(z=>box(HD1-D1+1.2,0.28,0.1,M.frame,(D1-1.0+HD1+0.2)/2,0.92,z,tractor));
+// Fifth wheel
+box(1.1,0.12,1.2,M.frame,KP-FWB,1.13,0,tractor);
+const fw=box(1.0,0.06,1.25,M.black,KP-FWB+0.05,1.21,0,tractor);
+// Drive axles + suspension
+[D1,D2].forEach(x=>{
+  cyl(0.07,2.0,M.frame,x,0.51,0,'z',tractor,12);
+  cyl(0.18,0.25,M.black,x,0.52,0,'z',tractor,16); // diff
+  [1,-1].forEach(s=>cyl(0.15,0.3,M.black,x+0.5,0.9,s*0.45,null,tractor,16));
+  [1,-1].forEach(s=>wheel(x,s*(TW/2-0.2),true));
+});
+// Drive fenders / quarter fenders
+const fenderMat=new THREE.MeshStandardMaterial({color:0x151617,roughness:0.6,side:THREE.DoubleSide});
+[1,-1].forEach(s=>{
+  [D1,D2].forEach(x=>{
+    const g=new THREE.CylinderGeometry(0.66,0.66,0.62,24,1,true,-Math.PI*0.45,Math.PI*0.9);g.rotateX(-Math.PI/2);
+    const f=new THREE.Mesh(g,fenderMat);f.position.set(x,0.53,s*(TW/2-0.35));f.castShadow=true;tractor.add(f);
+  });
+  box(0.02,0.65,0.62,M.rubber,D1-0.75,0.55,s*(TW/2-0.36),tractor);
+});
+// Fuel tanks (aluminum, polished)
+[1,-1].forEach(s=>{
+  const len=1.55;
+  cyl(0.33,len,M.chrome,SL0+0.15+len/2,0.78,s*(TW/2-0.2),'x',tractor,32);
+  [0.18,len-0.18].forEach(o=>cyl(0.345,0.05,M.black,SL0+0.15+o,0.78,s*(TW/2-0.2),'x',tractor,32));
+  // Steps / battery box
+  box(0.85,0.55,0.48,M.chrome,SL1+0.85,0.7,s*(TW/2-0.24),tractor);
+  [0.55,0.85].forEach(y=>box(0.75,0.03,0.2,M.black,SL1+0.85,y+0.01,s*(TW/2+0.0),tractor));
+});
+// Sleeper
+box(SL1-SL0,2.45,TW-0.04,M.paint,(SL0+SL1)/2,1.2+1.225,0,tractor);
+box(SL1-SL0,0.06,TW,M.black,(SL0+SL1)/2,1.2,0,tractor);
+// Sleeper side window + vents
+[1,-1].forEach(s=>{
+  box(0.55,0.32,0.02,M.glass,SL0+1.1,2.7,s*(TW/2-0.01),tractor);
+  for(let i=0;i<3;i++)box(0.4,0.03,0.015,M.black,SL0+0.5,1.6+i*0.06,s*(TW/2-0.015),tractor);
+});
+// Roof fairing
+const fairing=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.55,TW-0.06),M.paint);
+fairing.position.set(SL1-0.2+0.3,3.68,0);fairing.castShadow=true;tractor.add(fairing);
+// Side extenders (cab to trailer gap)
+[1,-1].forEach(s=>box(0.5,2.1,0.03,M.paint,SL0-0.22,2.45,s*(TW/2-0.03),tractor));
+// Cab
+const cabH=2.1;
+box(CB1-SL1,cabH,TW-0.02,M.paint,(SL1+CB1)/2,1.2+cabH/2,0,tractor);
+// Cab roof slope towards fairing
+const roof=box(CB1-SL1-0.2,0.25,TW-0.06,M.paint,(SL1+CB1)/2-0.1,1.2+cabH+0.12,0,tractor);
+// Windshield (slanted)
+const ws=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.95,TW-0.25),M.glass);
+const hideInCab=[ws];
+ws.position.set(CB1+0.02,2.75,0);ws.rotation.z=-0.32;tractor.add(ws);
+const wsPost=box(0.05,0.95,0.05,M.black,CB1+0.03,2.75,0,tractor);wsPost.rotation.z=-0.32;hideInCab.push(wsPost);
+// Cab front lower panel
+box(0.15,1.1,TW-0.05,M.paint,CB1-0.05,1.75,0,tractor);
+// Side windows + doors
+[1,-1].forEach(s=>{
+  box(0.95,0.75,0.02,M.glass,CB1-0.65,2.75,s*(TW/2),tractor);
+  box(1.2,0.015,0.015,M.black,CB1-0.65,1.3,s*(TW/2+0.005),tractor);
+  box(0.015,1.75,0.015,M.black,CB1-1.27,2.15,s*(TW/2+0.005),tractor);
+  box(0.18,0.04,0.04,M.chrome,CB1-1.05,2.1,s*(TW/2+0.03),tractor); // handle
+  // grab bar
+  cyl(0.02,1.0,M.chrome,SL1+0.05,1.9,s*(TW/2+0.04),null,tractor,8);
+  // Exhaust stack
+  cyl(0.1,3.3,M.chrome,SL1+0.08,2.45,s*(TW/2+0.12),null,tractor,16);
+  cyl(0.13,0.9,M.chrome,SL1+0.08,1.6,s*(TW/2+0.12),null,tractor,16);
+  // Air cleaner
+  cyl(0.24,0.9,M.chrome,CB1+0.15,2.0,s*(TW/2+0.08),null,tractor,24);
+});
+// Sun visor
+box(0.3,0.06,TW,M.paint,CB1+0.15,3.38,0,tractor);
+for(let i=-2;i<=2;i++){const l=box(0.06,0.05,0.08,M.amber,CB1+0.28,3.33,i*0.25,tractor);amberLamps.push(l);}
+// Hood (tapered conventional)
+const hoodShape=new THREE.Shape();
+hoodShape.moveTo(0,0);hoodShape.lineTo(2.25,0);hoodShape.lineTo(2.25,0.75);
+hoodShape.quadraticCurveTo(2.15,1.05,1.6,1.12);hoodShape.lineTo(0,1.32);hoodShape.lineTo(0,0);
+const hoodGeo=new THREE.ExtrudeGeometry(hoodShape,{depth:TW-0.5,bevelEnabled:true,bevelThickness:0.08,bevelSize:0.08,bevelSegments:4});
+hoodGeo.translate(0,0,-(TW-0.5)/2);
+const hood=new THREE.Mesh(hoodGeo,M.paint);hood.position.set(CB1,1.05,0);hood.castShadow=true;tractor.add(hood);hideInCab.push(hood);
+// Grille
+box(0.08,0.8,1.25,M.chrome,HD1+0.1,1.45,0,tractor);
+for(let i=0;i<9;i++)box(0.09,0.03,1.15,M.black,HD1+0.12,1.11+i*0.085,0,tractor);
+// Front fenders
+const frontFender=M.paint.clone();frontFender.side=THREE.DoubleSide;
+[1,-1].forEach(s=>{
+  const g=new THREE.CylinderGeometry(0.7,0.7,0.42,24,1,true,-Math.PI/2,Math.PI);g.rotateX(-Math.PI/2);
+  const f=new THREE.Mesh(g,frontFender);f.position.set(STEER,0.55,s*(TW/2-0.16));f.castShadow=true;tractor.add(f);hideInCab.push(f);
+  // headlights
+  const h=box(0.06,0.18,0.36,M.head,HD1+0.1,1.4,s*0.86,tractor);headLamps.push(h);
+  const a=box(0.05,0.08,0.16,M.amber,HD1+0.08,1.22,s*0.98,tractor);amberLamps.push(a);
+});
+// Bumper
+box(0.28,0.38,TW+0.05,M.chrome,HD1+0.22,0.72,0,tractor);
+// Steer axle
+cyl(0.07,TW-0.3,M.frame,STEER,0.51,0,'z',tractor,12);
+[1,-1].forEach(s=>wheel(STEER,s*(TW/2-0.16),false,true));
+// Chassis under cab
+box(CB1-SL0+2.2,0.35,1.0,M.frame,(SL0+HD1)/2,0.95,0,tractor);
+  const REAR=(D1+D2)/2;
+  const tOr=new THREE.Group(),rOr=new THREE.Group();
+  tOr.rotation.y=Math.PI/2;rOr.rotation.y=Math.PI/2;
+  cab.add(tOr);trailer.add(rOr);
+  tOr.add(tractor);tractor.position.x=-KP;
+  rOr.add(trailer_);trailer_.position.x=-KP;
+  wheels.forEach(w=>{(w.g.position.x>TL/2?tractor:trailer_).add(w.g);});
+  RIG.wheels=wheels;RIG.front=HD1+0.36-KP;RIG.eye=CB1-0.75-KP;RIG.cabF=CB1-KP;RIG.wb=STEER-REAR;
+  RIG.ws=hideInCab.slice(0,2);
+  interior=new THREE.Group();interior.visible=false;cab.add(interior);
+  const dash=lam(0x26292d,{side:THREE.DoubleSide}),F=RIG.cabF;
+  const ib=(w,h,d,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),dash);m.position.set(x,y,z);interior.add(m);return m;};
+  ib(2.35,.42,.55,0,2.12,-(F-.3));
+  ib(.07,1.0,.07,1.2,2.78,-(F-.05)).rotation.x=.32;ib(.07,1.0,.07,-1.2,2.78,-(F-.05)).rotation.x=.32;
+  ib(2.4,.16,.3,0,3.25,-(F-.12));
+  [-1.25,1.25].forEach(x=>{ib(.04,1.05,1.9,x,1.85,-(F-1.0));ib(.04,.2,1.9,x,3.22,-(F-1.0));});
+  ib(2.5,.04,2.4,0,3.3,-(F-.9));
+  wheelM=new THREE.Mesh(new THREE.TorusGeometry(.22,.03,8,24),lam(0x111111));
+  wheelM.position.set(-.55,2.3,-(RIG.eye+.45));wheelM.rotation.x=-0.5;interior.add(wheelM);
+  wheelM.add(new THREE.Mesh(new THREE.BoxGeometry(.48,.05,.04),lam(0x111111)));
+  scene.add(cab,trailer);
+}
+function buildCar(){
+  const g=new THREE.Group();
+  const cols=[0x2c5aa0,0x8a8f96,0x1f1f22,0x7a1f1f,0xd8d8d8,0x2f6b3f];
+  const body=lam(cols[Math.floor(Math.random()*cols.length)]);
+  box(g,1.85,.75,4.5,0,.65,0,body);
+  box(g,1.65,.62,2.3,0,1.33,.25,body);
+  box(g,1.6,.5,.05,0,1.33,-.92,lam(0x16212c));
+  box(g,1.66,.1,2.3,0,1.69,.25,lam(0xffffff));
+  const tl=new THREE.MeshBasicMaterial({color:0xff2020});
+  box(g,.35,.18,.05,.7,.8,2.26,tl);box(g,.35,.18,.05,-.7,.8,2.26,tl);
+  g.visible=false;scene.add(g);return g;
+}
+
+/* ================= INPUT ================= */
+const K={up:false,down:false,left:false,right:false};
+const KEYMAP={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right'};
+addEventListener('keydown',e=>{
+  if(KEYMAP[e.code]){K[KEYMAP[e.code]]=true;if(state==='drive')e.preventDefault();}
+  if(e.repeat)return;
+  if(e.code==='KeyR'||e.code==='ShiftRight')shift(1);
+  if(e.code==='KeyF'||e.code==='ShiftLeft')shift(-1);
+  if(e.code==='KeyE')toggleJake();
+  if(e.code==='KeyC')camMode=1-camMode;
+  if(e.code==='KeyP'||e.code==='Escape')togglePause();
+});
+addEventListener('keyup',e=>{if(KEYMAP[e.code])K[KEYMAP[e.code]]=false;});
+addEventListener('blur',()=>{for(const k in K)K[k]=false;});
+document.querySelectorAll('#touch .tb').forEach(b=>{
+  const k=b.dataset.k,t=b.dataset.t;
+  b.addEventListener('pointerdown',e=>{e.preventDefault();b.classList.add('act');if(k)K[k]=true;
+    if(t==='jake')toggleJake();if(t==='cam')camMode=1-camMode;if(t==='pause')togglePause();if(t==='gup')shift(1);if(t==='gdn')shift(-1);});
+  const up=()=>{b.classList.remove('act');if(k)K[k]=false;};
+  b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('pointerleave',up);
+});
+function shift(d){if(state!=='drive'||!T)return;const ng=T.gear+d;if(ng<1||ng>GEARS.length)return;
+  if(d<0&&T.v*3.6>GEARS[ng-1]+3){say('ds','Too fast to downshift into gear '+ng,'warn',1.5);return;}
+  T.gear=ng;showGear();}
+function showGear(){if(!T)return;$('gNum').textContent=T.gear;$('gMax').textContent='max '+GEARS[T.gear-1]+' km/h';
+  const d=$('gearDots');if(!d.children.length)GEARS.forEach(()=>d.appendChild(document.createElement('i')));
+  [...d.children].forEach((c,i)=>c.classList.toggle('on',i<T.gear));
+  const b=$('gearBox');b.classList.add('pop');clearTimeout(showGear.t);showGear.t=setTimeout(()=>b.classList.remove('pop'),180);}
+function toggleJake(){if(state!=='drive'||!T)return;T.jake=!T.jake;say('jk'+Math.random(),'Engine brake '+(T.jake?'ON':'OFF'),'info',0);}
+function togglePause(){
+  if(state==='drive'){state='pause';show('pause');}
+  else if(state==='pause'){state='drive';show(null);last=performance.now();}
+}
+$('resume').onclick=togglePause;
+$('restart').onclick=()=>startDrive();
+$('toMenu').onclick=()=>{state='menu';show('menu');};
+$('again').onclick=()=>startDrive();
+$('startDrive').onclick=()=>startDrive();
+
+/* ================= MESSAGES ================= */
+const msgCD={};let msgT=0;
+function say(key,text,cls,cd){
+  const now=performance.now();
+  if(msgCD[key]&&now<msgCD[key])return;
+  msgCD[key]=now+(cd===undefined?5:cd)*1000;
+  const m=$('msg');m.textContent=text;m.className='show '+(cls||'warn');
+  clearTimeout(msgT);msgT=setTimeout(()=>m.className='',cls==='info'?3800:2600);
+}
+
+/* ================= DRIVE ================= */
+let T=null,camMode=0,last=0,spawnT=0;
+function startDrive(){
+  if(!renderer)initThree();
+  if(!built)buildWorld();
+  T={gear:1,s:4,x:HW*.5,v:0,psi:0,phi:0,thr:0,brk:0,steer:0,jake:true,score:100,zi:0,lockups:0,jakeLocks:0,slides:0,spins:0,overT:0,tailT:0,iceMax:0,iceZones:0,lockPrev:false,slidePrev:false,swingDir:1,spinDir:1,time:0,trac:0,gap:null,tgt:4};
+  cars.forEach(c=>{c.on=false;c.mesh.visible=false;});
+  for(const k in msgCD)delete msgCD[k];
+  for(const k in K)K[k]=false;
+  spawnT=0;
+  placeTruck();snapCam();showGear();
+  state='drive';show(null);last=performance.now();
+  setTimeout(()=>say('start','Right lane, loaded trailer. Shift up with R / Right Shift.','info',0),400);
+}
+function step(dt){
+  const zi=zoneIdx(T.s),z=ZONES[zi],mu=GRIP[z.type],g=9.81,v=T.v,p=samp(T.s);
+  T.time+=dt;
+  // inputs
+  T.thr+=((K.up?1:0)-T.thr)*Math.min(1,dt*1.6);
+  T.brk=K.down?Math.min(1,T.brk+dt*1.1):Math.max(0,T.brk-dt*4);
+  if(K.left)T.steer=Math.min(1,T.steer+dt*.8);
+  else if(K.right)T.steer=Math.max(-1,T.steer-dt*.8);
+  // braking
+  const gi=T.gear-1,gMax=GEARS[gi]/3.6,gMin=gi>0?GEARS[gi-1]*.6/3.6:0;
+  const jake=(T.jake&&T.thr<.05&&v>3)?1.3*Math.min(1,v/12)*(.7+.07*(9-gi)):0;
+  const brakeD=T.brk*5.5;
+  const capT=mu*g*.92,capD=mu*g*.42;
+  const demT=brakeD+jake,demD=brakeD*.3+jake;
+  const lockT=demT>capT&&v>2,lockD=demD>capD&&v>2;
+  const locking=lockT||lockD;
+  if(locking&&!T.lockPrev){
+    T.swingDir=Math.sign(T.phi+(Math.random()-.5)*.02)||1;
+    T.spinDir=Math.sign(T.steer+(Math.random()-.5)*.1)||1;
+    T.lockups++;T.score-=4;
+    if(lockD&&jake>0&&brakeD<capT*.5){T.jakeLocks++;say('lkj','Drive wheels locked! Engine brake on a slippery road — switch it OFF (E)','bad',2);}
+    else if(lockT)say('lkt','Wheels locking — trailer swinging! Release the brakes','bad',2);
+    else say('lkd','Drive wheels locking — ease off the brake','bad',2);
+  }
+  T.lockPrev=locking;
+  const decel=locking?Math.min(demT,capT*.78):demT;
+  // steering / lateral
+  const maxC=.05/(1+v/8);
+  const cWant=T.steer*maxC;
+  let latCap=mu*g*.9*(lockT?.25:1);
+  latCap*=Math.sqrt(Math.max(.05,1-Math.pow(Math.min(1,decel/(mu*g)),2)));
+  const latDem=v*v*Math.abs(cWant);
+  let cEff=cWant,slide=false;
+  if(latDem>latCap&&v>2){cEff=Math.sign(cWant)*latCap/(v*v);slide=true;}
+  if(slide&&!T.slidePrev&&!locking){T.slides++;T.score-=2;say('sl','Steer tires sliding — slow down before curves','warn',3);}
+  T.slidePrev=slide;
+  // throttle
+  let acc=T.thr*1.4*TQ[gi]*(v<gMin?.35:1),spin=false;
+  if(v>gMax-.3)acc*=Math.max(0,(gMax-v)/.3);
+  const over=v>gMax+.2?.6:0;
+  if(v<gMin&&T.thr>.3&&v>.5)say('lug','Lugging the engine — shift down (F)','warn',5);
+  if(T.gear<GEARS.length&&v>gMax-.4&&T.thr>.5&&GEARS[gi]<SAFE[z.type]-5)say('up','Top of gear '+T.gear+' — shift up (R) for more speed','info',8);
+  if(acc>capD){acc=capD*.7;spin=T.thr>.3;}
+  if(spin&&v<15){say('sp','Wheel spin — ease off the throttle','warn',4);}
+  const drag=.00035*v*v+(v>.1?.08:0);
+  T.v=Math.max(0,v+(acc-decel-drag-over)*dt);
+  // yaw dynamics
+  let jackYaw=0;
+  if(lockD&&v>3)jackYaw=(demD-capD)*.55*T.spinDir;
+  if(spin&&mu<.4&&v>1)jackYaw+=.12*T.spinDir*T.thr;
+  if(mu<.35&&v>8)T.psi+=(Math.random()-.5)*dt*v*.006;
+  const yawCab=v*cEff+jackYaw;
+  T.psi+=(yawCab-v*p.k)*dt;
+  const restore=(v/TL)*(lockT?.25:1)*Math.min(1,mu*2.5);
+  const swing=(lockT&&v>3)?(demT-capT)*.35*T.swingDir:0;
+  T.phi+=(-restore*Math.sin(T.phi)-yawCab+swing)*dt;
+  T.s+=v*Math.cos(T.psi)*dt;
+  T.x+=-v*Math.sin(T.psi)*dt;
+  // traction meter
+  T.trac=Math.max(demT/capT,latDem/(mu*g*.9),T.thr>.05?acc/capD:0,locking?1.1:0);
+  // zone transitions
+  if(zi!==T.zi){
+    const prev=ZONES[T.zi];T.zi=zi;
+    if(prev.type==='ice')say('z'+zi,`That stretch was BLACK ICE — it looked wet, temperature ${prev.t}°C.`,'info',0);
+    else if(z.type==='snow')say('z'+zi,'Snow-covered road — lane lines hidden. Slow down, add space.','info',0);
+    else if(z.type==='wet'&&prev.type==='dry')say('z'+zi,'Wet road and temperature near freezing. Watch for ice.','info',0);
+    else if(z.type==='dry')say('z'+zi,'Road is drying — stay alert for shaded patches.','info',0);
+    if(z.type==='ice')T.iceZones++;
+  }
+  // scoring
+  const kmh=T.v*3.6,safe=SAFE[z.type];
+  if(z.type==='ice')T.iceMax=Math.max(T.iceMax,kmh);
+  if(kmh>safe+5){T.overT+=dt;T.score-=dt*1.4*(kmh-safe)/10;
+    say('fast',z.type==='ice'?'Grip is very low here — slow down!':`Too fast for ${LOOK[z.type].toLowerCase()} roads — about ${safe} km/h max`,'warn',6);}
+  if(z.type==='snow'&&T.jake&&T.v>5)say('jkon','Engine brake is ON on a snowy road — consider turning it OFF (E)','warn',10);
+  // following
+  let gap=null;
+  for(const c of cars){if(!c.on||Math.abs(c.x-T.x)>2.4)continue;const gg=c.s-2.25-(T.s+RIG.front);if(gg>-30&&(gap===null||gg<gap))gap=gg;}
+  T.gap=gap;T.tgt=FOLLOW[z.type];
+  if(gap!==null&&gap>0&&gap<220&&T.v>3&&gap/T.v<T.tgt){T.tailT+=dt;T.score-=dt*1.2;say('tail',`Following too close — need ${T.tgt}+ seconds on ${LOOK[z.type].toLowerCase()} roads`,'warn',6);}
+  T.score=Math.max(0,Math.min(100,T.score));
+  // crash checks
+  for(const c of cars){if(!c.on)continue;
+    if(Math.abs(c.x-T.x)<2.25&&c.s-2.25<T.s+RIG.front&&c.s+2.25>T.s-1)return endRun('Collision','You hit a vehicle. Leave far more space and slow down early on winter roads.');
+    if(Math.abs(T.phi)>.25){const tx=T.x+Math.sin(T.phi)*9;if(Math.abs(c.x-tx)<2.2&&Math.abs(c.s-(T.s-8))<9)return endRun('Collision','Your swinging trailer struck a vehicle.');}
+  }
+  if(Math.abs(T.phi)>1.05)return endRun('Jackknife',lockD?'The drive wheels locked and the tractor folded around the trailer.':'The trailer swung around past the tractor.');
+  if(Math.abs(T.psi)>.9)return endRun('Spun out','You lost control and the rig spun.');
+  if(Math.abs(T.x)>HW+2.4)return endRun('Off the road','The truck slid into the ditch.');
+  if(T.s>=FINISH)return endRun(null);
+}
+function updateCars(dt){
+  spawnT-=dt;
+  if(spawnT<=0){
+    spawnT=2+Math.random()*3;
+    const on=cars.filter(c=>c.on).length,free=cars.find(c=>!c.on);
+    if(free&&on<3){
+      const s=T.s+320+Math.random()*220,rr=Math.random(),lane=HW*(rr<.65?.5:-.5);
+      if(s<FINISH-50&&!cars.some(c=>c.on&&Math.abs(c.x-lane)<1&&Math.abs(c.s-s)<60)){
+        const zt=ZONES[zoneIdx(s)].type;
+        free.on=true;free.s=s;free.x=lane;free.v=(lane>0?CARSPD[zt][0]:CARSPD[zt][1])/3.6;free.mesh.visible=true;
+      }
+    }
+  }
+  for(const c of cars){
+    if(!c.on)continue;
+    const zt=ZONES[zoneIdx(c.s)].type,tv=(c.x>0?CARSPD[zt][0]:CARSPD[zt][1])/3.6;
+    c.v+=Math.max(-1.5*dt,Math.min(dt,tv-c.v));
+    c.s+=c.v*dt;
+    if(c.s<T.s-150||c.s>T.s+800||c.s>LEN-5){c.on=false;c.mesh.visible=false;continue;}
+    const w=wAt(c.s,c.x);c.mesh.position.set(w.x,0,w.z);c.mesh.rotation.y=w.th;
+  }
+}
+function placeTruck(){
+  const w=wAt(T.s,T.x);
+  cab.position.set(w.x,0,w.z);cab.rotation.y=w.th+T.psi;
+  trailer.position.copy(cab.position);trailer.rotation.y=w.th+T.psi+T.phi;
+  const ang=Math.atan(RIG.wb*T.steer*.05/(1+T.v/8)),dd=T.s-(T.lastS===undefined?T.s:T.lastS);T.lastS=T.s;
+  RIG.wheels.forEach(q=>{if(!T.lockPrev)q.spin.rotation.z-=dd/0.51;if(q.steer)q.steer.rotation.y=ang;});
+}
+const camPos=new THREE.Vector3(),camLook=new THREE.Vector3(),tmpV=new THREE.Vector3(),tmpL=new THREE.Vector3();
+function camTargets(){
+  const h=cab.rotation.y,dx=-Math.sin(h),dz=-Math.cos(h),p=cab.position;
+  if(camMode===0){
+    const th=samp(T.s).th,hh=th+T.psi*.5,bx=-Math.sin(hh),bz=-Math.cos(hh);
+    tmpV.set(p.x-bx*30,10,p.z-bz*30);tmpL.set(p.x+bx*30,2,p.z+bz*30);
+  }else{
+    const rx=Math.cos(h),rz=-Math.sin(h),side=-.55;
+    tmpV.set(p.x+dx*RIG.eye+rx*side,2.95,p.z+dz*RIG.eye+rz*side);tmpL.set(p.x+dx*80+rx*side,1.3,p.z+dz*80+rz*side);
+  }
+}
+function snapCam(){camTargets();camPos.copy(tmpV);camLook.copy(tmpL);camera.position.copy(camPos);camera.lookAt(camLook);}
+function updateCam(dt){
+  const ins=camMode===1;RIG.ws.forEach(m=>m.visible=!ins);interior.visible=ins;wheelM.rotation.z=T.steer*2.2;
+  camera.fov=ins?70:62;camera.updateProjectionMatrix();
+  camTargets();
+  const a=camMode===1?1:Math.min(1,dt*4);
+  camPos.lerp(tmpV,a);camLook.lerp(tmpL,camMode===1?1:Math.min(1,dt*6));
+  camera.position.copy(camPos);camera.lookAt(camLook);
+}
+function updateWeather(dt){
+  const z=ZONES[zoneIdx(T.s+60)];
+  fog.far+=(FOGFAR[z.type]-fog.far)*Math.min(1,dt*.6);
+  fog.near=Math.min(30,fog.far*.15);
+  const amt=SNOWAMT[z.type];
+  snowMat.opacity+=(amt*.95-snowMat.opacity)*Math.min(1,dt*.8);
+  snowPts.visible=snowMat.opacity>.02;
+  if(!snowPts.visible)return;
+  const pos=snowGeo.attributes.position.array,h=cab.rotation.y;
+  const vx=-Math.sin(h)*T.v,vz=-Math.cos(h)*T.v;
+  for(let i=0;i<pos.length;i+=3){
+    pos[i]-=vx*dt+1.2*dt;pos[i+1]-=4.5*dt;pos[i+2]-=vz*dt;
+    for(let k=0;k<3;k++){if(pos[i+k]>40)pos[i+k]-=80;else if(pos[i+k]<-40)pos[i+k]+=80;}
+  }
+  snowGeo.attributes.position.needsUpdate=true;
+  snowPts.position.copy(camera.position);
+}
+let hudT=0;
+function updateHUD(dt){
+  $('steerI').style.left=(50-T.steer*48)+'%';
+  hudT-=dt;if(hudT>0)return;hudT=.1;
+  const z=ZONES[zoneIdx(T.s)],kmh=Math.round(T.v*3.6);
+  $('spd').innerHTML=kmh+' <small>km/h</small>';
+  $('spd').style.color=kmh>SAFE[z.type]+5?'var(--warn)':'';
+  $('hRoad').textContent=LOOK[z.type];
+  $('hTemp').textContent=z.t+'°C';
+  $('hTemp').style.color=z.t<=1?'var(--ice)':'';
+  $('hGear').textContent=T.gear+'  (max '+GEARS[T.gear-1]+')';
+  const rp=Math.min(1,T.v*3.6/GEARS[T.gear-1]);$('hRpm').style.width=(rp*100)+'%';$('hRpm').style.background=rp>.97?'var(--warn)':'var(--acc)';
+  $('hJake').textContent=T.jake?'ON':'OFF';
+  $('hJake').style.color=T.jake?'var(--warn)':'var(--ok)';
+  if(T.gap!==null&&T.gap>0&&T.gap<300&&T.v>1){
+    const s=T.gap/T.v;$('hFol').textContent=s.toFixed(1)+'s / '+T.tgt+'s';
+    $('hFol').style.color=s<T.tgt?'var(--bad)':'var(--ok)';
+  }else{$('hFol').textContent='clear';$('hFol').style.color='';}
+  const tr=Math.min(1,T.trac);
+  const b=$('hTrac');b.style.width=(tr*100)+'%';b.style.background=tr>.9?'var(--bad)':tr>.65?'var(--warn)':'var(--ok)';
+  $('hTracT').textContent=Math.round(tr*100)+'%';
+  $('score').textContent=Math.round(T.score);
+  $('score').style.color=T.score>=80?'var(--ok)':T.score>=60?'var(--warn)':'var(--bad)';
+  $('hProg').style.width=Math.min(100,T.s/FINISH*100)+'%';
+  $('hDist').textContent=(Math.min(T.s,FINISH)/1000).toFixed(1)+' / '+(FINISH/1000).toFixed(1)+' km';
+}
+function endRun(crash,why){
+  state='result';
+  const sc=Math.round(T.score);
+  let grade=crash?'F':sc>=90?'A':sc>=80?'B':sc>=70?'C':sc>=60?'D':'F';
+  $('rTitle').textContent=crash?'💥 '+crash:'🏁 Route Complete';
+  $('rSub').textContent=crash?why:'You made it through the winter route.';
+  $('rGrade').textContent=grade;
+  $('rGrade').style.color=grade==='A'||grade==='B'?'var(--ok)':grade==='F'?'var(--bad)':'var(--warn)';
+  const mm=Math.floor(T.time/60),ss=Math.floor(T.time%60);
+  $('rStats').innerHTML=[
+    ['Safety score',sc],['Distance',(Math.min(T.s,FINISH)/1000).toFixed(2)+' km'],['Time',mm+':'+String(ss).padStart(2,'0')],
+    ['Wheel lockups',T.lockups],['Steering slides',T.slides],['Time over safe speed',T.overT.toFixed(0)+' s'],
+    ['Time following too close',T.tailT.toFixed(0)+' s'],['Top speed on black ice',T.iceZones?Math.round(T.iceMax)+' km/h':'—']
+  ].map(r=>`<span>${r[0]}</span><span>${r[1]}</span>`).join('');
+  const tips=[];
+  if(crash==='Jackknife')tips.push('At the first sign of a skid, get off the brakes and engine brake so the wheels can roll and regain grip.');
+  if(T.jakeLocks)tips.push('The engine brake locked your drive wheels. Turn it off on snow and ice.');
+  if(T.lockups&&!T.jakeLocks)tips.push('Brake earlier and more gently. Locked wheels stop slower and cannot steer.');
+  if(T.iceZones&&T.iceMax>50)tips.push('When the temperature is near 0°C and the road looks wet, assume black ice — especially on bridges.');
+  if(T.overT>5)tips.push('Match your speed to the road surface, not the posted limit.');
+  if(T.tailT>5||crash==='Collision')tips.push('Double or triple your following distance on winter roads.');
+  if(T.slides)tips.push('Slow down before curves. On low traction, the steer tires slide instead of turning.');
+  if(crash==='Off the road')tips.push('Make small, smooth steering corrections — big inputs on slippery roads start slides.');
+  if(!tips.length)tips.push('Clean drive. Smooth inputs, safe speeds and big gaps — that\'s winter driving done right.');
+  $('rTips').innerHTML=tips.map(t=>`<li>${t}</li>`).join('');
+  show('result');
+}
+function loop(now){
+  requestAnimationFrame(loop);
+  if(!renderer)return;
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(state==='drive'&&T){
+    const n=2;for(let i=0;i<n&&state==='drive';i++)step(dt/n);
+    updateCars(dt);placeTruck();updateCam(dt);updateWeather(dt);
+    if(state==='drive')updateHUD(dt);
+    renderer.render(scene,camera);
+  }else if((state==='pause'||state==='result')&&T){renderer.render(scene,camera);}
+}
+requestAnimationFrame(loop);
+
+/* menu snowflakes */
+(function(){
+  const cv=document.createElement('canvas');cv.className='flakes';document.body.appendChild(cv);
+  const x=cv.getContext('2d');let fl=[];
+  function rs(){cv.width=innerWidth;cv.height=innerHeight;fl=Array.from({length:90},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,r:1+Math.random()*2.5,s:.3+Math.random()}));}
+  rs();addEventListener('resize',rs);
+  (function f(){requestAnimationFrame(f);
+    const vis=state!=='drive'&&state!=='pause';cv.style.display=vis?'block':'none';if(!vis)return;
+    x.clearRect(0,0,cv.width,cv.height);x.fillStyle='rgba(255,255,255,.7)';
+    fl.forEach(p=>{p.y+=p.s;p.x+=Math.sin(p.y*.01)*.3;if(p.y>cv.height){p.y=-5;p.x=Math.random()*cv.width;}x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill();});
+  })();
+})();
+})();
+</script>
+<script>
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "id": "./",
+  "name": "Winter Driving Trainer",
+  "short_name": "Winter Driving",
+  "description": "Commercial truck winter driving practice: black ice, snow and curves simulator, winter knowledge quiz and winter pre-trip checklist.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "orientation": "landscape",
+  "background_color": "#0d1b2a",
+  "theme_color": "#0d1b2a",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "education",
+    "games",
+    "simulation"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/Screenshot1.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Screenshot 1"
+    },
+    {
+      "src": "screenshots/Screenshot2.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Screenshot 2"
+    },
+    {
+      "src": "screenshots/Screenshot3.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Screenshot 3"
+    },
+    {
+      "src": "screenshots/Screenshot4.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Screenshot 4"
+    }
+  ]
+}
