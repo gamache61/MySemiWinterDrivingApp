@@ -1,28 +1,41 @@
 {
-  "id": "./",
   "name": "Winter Driving Trainer",
   "short_name": "Winter Driving",
   "description": "Commercial truck winter driving practice: black ice, snow and curves simulator, winter knowledge quiz and winter pre-trip checklist.",
+  "id": "/MySemiWinterDrivingApp/",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
-  "display_override": [
-    "fullscreen",
-    "standalone"
-  ],
   "orientation": "landscape",
   "background_color": "#0d1b2a",
   "theme_color": "#0d1b2a",
-  "lang": "en",
-  "dir": "ltr",
-  "categories": [
-    "education",
-    "games",
-    "simulation"
-  ],
   "icons": [
     {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "icons/icon1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon3.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon4.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
@@ -57,5 +70,16 @@
       "form_factor": "wide",
       "label": "Screenshot 4"
     }
+  ],
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "education",
+    "games",
+    "simulation"
   ]
 }
